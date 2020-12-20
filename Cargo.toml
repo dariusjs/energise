@@ -1,16 +1,17 @@
 [package]
 name = "energise"
-version = "0.1.0"
+version = "0.2.1"
 authors = ["dariusjs"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.11"
+chrono = { version = "^0.4", features= ["serde"] }
 serialport = "3.3.0"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "*"
 rusb = "0.6"
-tokio = { version = "0.2.0", features = ["macros", "rt-core"] }
-reqwest = "0.10.4"
-influx_db_client = "*"
+tokio = { version = "1.0", features = ["full", "tracing"] }
+reqwest = "0.10"
+influx_db_client = "0.4"

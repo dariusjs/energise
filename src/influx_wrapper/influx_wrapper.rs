@@ -25,16 +25,6 @@ impl InfluxDbClient {
             Err(e) => Err(Box::new(e))
         }
     }
-    // pub async fn send_payload(&self, payload: String) -> Result<(), reqwest::Error> {
-    //     let response = self.http_client
-    //         .post(&self.influx_db_address)
-    //         .body(payload.into_bytes())
-    //         .header("Content-Type", "application/octet-stream")
-    //         .send()
-    //         .await;
-    //     println!("{:?}", response);
-    //     Ok(())
-    // }
 }
 
 impl Default for InfluxDbClient {
