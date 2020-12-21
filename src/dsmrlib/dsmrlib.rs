@@ -131,7 +131,7 @@ fn usage_to_points(data: &UsageData) -> Result<Points, ErrorKind> {
     let gas_reading = create_point(
         "dsmr",
         "gas",
-        "reading",
+        "receiving",
         &data.gas_reading,
         data.gas_timestamp,
     );
