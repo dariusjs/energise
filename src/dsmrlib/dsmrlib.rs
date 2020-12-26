@@ -238,15 +238,15 @@ fn usage_to_points(data: &UsageData) -> Result<Points, ErrorKind> {
     );
     let voltage = create_point(
         "dsmr",
-        "gas",
-        "receiving",
+        "electricity",
+        "voltage",
         &data.voltage,
         &data.electricity_timestamp,
     );
     let current = create_point(
         "dsmr",
-        "gas",
-        "receiving",
+        "electricity",
+        "current",
         &data.current,
         &data.electricity_timestamp,
     );
