@@ -72,6 +72,9 @@ impl DsmrClient {
             "Receiving data on {} at {} baud:",
             &self.serial_device, &settings.baud_rate
         );
+        //
+        //  raspberrypi energise[6162]: thread '<unnamed>' panicked at 'called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" }', src/dsmrlib/dsmrlib.rs:75:64
+        //
         let data_iter = BufReader::new(port).lines().map(|lines| lines.unwrap());
         let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
         loop {
