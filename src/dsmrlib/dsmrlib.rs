@@ -72,7 +72,7 @@ impl DsmrClient {
             "Receiving data on {} at {} baud:",
             &self.serial_device, &settings.baud_rate
         );
-        let data_iter = BufReader::new(port).lines().map(|l| l.unwrap());
+        let data_iter = BufReader::new(port).lines().map(|lines| lines.unwrap());
         let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
         loop {
             let data = receiver.recv();
