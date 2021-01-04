@@ -148,6 +148,7 @@ version = "0.2.1"
 dependencies = [
  "chrono",
  "influx_db_client",
+ "regex",
  "reqwest",
  "rusb",
  "serde",

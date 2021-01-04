@@ -15,3 +15,4 @@ rusb = "0.6"
 tokio = { version = "0.2", features = ["full", "tracing"] }
 reqwest = "0.10"
 influx_db_client = "0.4"
+regex = "1"

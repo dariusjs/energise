@@ -5,6 +5,7 @@ use chrono::TimeZone;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::ErrorKind;
+use regex::Regex;
 
 #[test]
 
@@ -38,7 +39,7 @@ fn it_adds_two() {
     ];
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct UsageData2 {
+    pub struct UsageData {
         #[serde(rename(deserialize = "0-0:1.0.0"))]
         electricity_timestamp: Reading,
         #[serde(rename(deserialize = "1-0:1.7.0"))]
@@ -130,10 +131,64 @@ fn it_adds_two() {
     println!("hash {:?} \n", hash);
     let v = serde_json::to_value(&hash).unwrap();
     println!("v {:#?} \n", v);
-    let deserialised: UsageData2 = serde_json::from_value(v).unwrap();
+    let deserialised: UsageData = serde_json::from_value(v).unwrap();
     println!("deserialised {:?} \n", deserialised);
 
-    assert_eq!(4, 2);
+
+    let label = Regex::new(r"^(.*\)).*").unwrap();
+    let re = Regex::new(r"\((.*)\)").unwrap();
+
+
+    let mut hash2: HashMap<String, Reading> = HashMap::new();
+    for record in message.iter() {
+
+        // match re.captures(record) {
+        //     Some(item) => {
+        //         let cap = item.get(1).unwrap().as_str();
+        //         println!("{}", cap);
+        //         hash2.insert(
+        //             record.to_string(),
+        //             Reading::Measurement(Measurement {
+        //                 value: 5.0,
+        //                 unit: cap.to_string(),
+        //             }),
+        //         );
+        //     }
+        //     None => {
+        //         println!("Something")
+        //     }
+        // }
+
+        hash2.insert(
+            // record.to_string(),
+            match label.captures(record) {
+                Some(item) => {
+                    // item.get(1).unwrap().as_str().to_string()
+                    item.get(1).map_or("", |m| m.as_str()).to_string()
+                }
+                _ => {
+                    "something".to_string()
+                }
+            },
+            Reading::Measurement(Measurement {
+                value: 5.0,
+                unit: {
+                    match re.captures(record) {
+                        Some(item) => {
+                            // item.get(1).unwrap().as_str().to_string()
+                            item.get(1).map_or("", |m| m.as_str()).to_string()
+                        }
+                        _ => {
+                            "something".to_string()
+                        }
+                    }
+                },
+            }),
+        );
+    }
+
+    println!("hash2: {:#?}", hash2);
+    assert_eq!(2, 4);
 }
 
 fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind> {
