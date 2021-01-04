@@ -135,51 +135,53 @@ fn it_adds_two() {
     println!("deserialised {:?} \n", deserialised);
 
 
-    let label = Regex::new(r"^(.*\)).*").unwrap();
+    // let label = Regex::new(r"^(.*\)).*").unwrap();
+    // let label = Regex::new(r"\(([^)]+)\)").unwrap();
     let re = Regex::new(r"\((.*)\)").unwrap();
+    let unit_regex = Regex::new(r"\*([A-Z]+|[a-z]+[A-Z]+[a-z]+|[a-z]+[0-9]+)").unwrap();
+    let value_regex = Regex::new(r"\((([0-9]+[.]+[0-9]+)|([0-9]+))").unwrap();
 
 
     let mut hash2: HashMap<String, Reading> = HashMap::new();
     for record in message.iter() {
-
-        // match re.captures(record) {
-        //     Some(item) => {
-        //         let cap = item.get(1).unwrap().as_str();
-        //         println!("{}", cap);
-        //         hash2.insert(
-        //             record.to_string(),
-        //             Reading::Measurement(Measurement {
-        //                 value: 5.0,
-        //                 unit: cap.to_string(),
-        //             }),
-        //         );
-        //     }
-        //     None => {
-        //         println!("Something")
-        //     }
-        // }
-
+        // Here we try to get the record label
+        let a = record.replace(")", "");
+        let x: Vec<&str> = a.split('(').collect();
         hash2.insert(
-            // record.to_string(),
-            match label.captures(record) {
-                Some(item) => {
-                    // item.get(1).unwrap().as_str().to_string()
-                    item.get(1).map_or("", |m| m.as_str()).to_string()
-                }
+            match x.len() {
+                1 => {
+                    x[0].to_string()
+                },
+                2 => {
+                    x[0].to_string()
+                },
+                3 => {
+                    x[2].to_string()
+                },
                 _ => {
-                    "something".to_string()
+                    record.to_string()
                 }
             },
             Reading::Measurement(Measurement {
-                value: 5.0,
+                value: {
+                    match value_regex.captures(record) {
+                        Some(item) => {
+                            // item.get(1).unwrap().as_str().to_string()
+                            item.get(1).map_or(0.0, |m| m.as_str().parse::<f64>().unwrap())
+                        }
+                        _ => {
+                            0.0
+                        }
+                    }
+                },
                 unit: {
-                    match re.captures(record) {
+                    match unit_regex.captures(record) {
                         Some(item) => {
                             // item.get(1).unwrap().as_str().to_string()
                             item.get(1).map_or("", |m| m.as_str()).to_string()
                         }
                         _ => {
-                            "something".to_string()
+                            "none".to_string()
                         }
                     }
                 },
