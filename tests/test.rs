@@ -37,7 +37,7 @@ fn it_adds_two() {
         "0-1:24.2.1(101221010511W)(03799.479*m3)",
     ];
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
     pub struct UsageData2 {
         #[serde(rename(deserialize = "0-0:1.0.0"))]
         electricity_timestamp: Reading,
@@ -62,19 +62,19 @@ fn it_adds_two() {
         current: Reading,
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
     enum Reading {
         Measurement(Measurement),
         Timestamp(Timestamp),
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
     struct Measurement {
         value: f64,
         unit: String,
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
     struct Timestamp {
         timestamp: DateTime<FixedOffset>,
     }
@@ -83,7 +83,7 @@ fn it_adds_two() {
     for item in message.iter() {
         let a = item.replace(")", "");
         let x: Vec<&str> = a.split('(').collect();
-        println!("x {:?}", x);
+        // println!("x {:?}", x);
         if x.len() > 1 {
             // Timestamps have a different format than the rest of P1 the records so we need to catch it and parse it first
             if x[0].to_string() == "0-0:1.0.0" {
@@ -127,13 +127,59 @@ fn it_adds_two() {
             }
         }
     }
-    println!("hash {:?} \n", hash);
     let v = serde_json::to_value(&hash).unwrap();
-    println!("v {:#?} \n", v);
     let deserialised: UsageData2 = serde_json::from_value(v).unwrap();
-    println!("deserialised {:?} \n", deserialised);
 
-    assert_eq!(4, 2);
+    let expected_data = UsageData2 {
+        electricity_timestamp: Reading::Timestamp(Timestamp {
+            timestamp: FixedOffset::east(1 * 3600)
+                .ymd(2020, 12, 21)
+                .and_hms(1, 8, 33),
+        }),
+        power_receiving: Reading::Measurement(Measurement {
+            value: 0.229,
+            unit: "kW".to_string(),
+        }),
+        power_returning: Reading::Measurement(Measurement {
+            value: 0.0,
+            unit: "kW".to_string(),
+        }),
+        electricity_returned_reading_low_tariff: Reading::Measurement(Measurement {
+            value: 0.0,
+            unit: "kWh".to_string(),
+        }),
+        electricity_returned_reading_normal_tariff: Reading::Measurement(Measurement {
+            value: 0.0,
+            unit: "kWh".to_string(),
+        }),
+        electricity_reading_low_tariff: Reading::Measurement(Measurement {
+            value: 2134.177,
+            unit: "kWh".to_string(),
+        }),
+        electricity_reading_normal_tariff: Reading::Measurement(Measurement {
+            value: 3448.211,
+            unit: "kWh".to_string(),
+        }),
+        gas_reading: Reading::Measurement(Measurement {
+            value: 3799.479,
+            unit: "m3".to_string(),
+        }),
+        gas_timestamp: Reading::Timestamp(Timestamp {
+            timestamp: FixedOffset::east(1 * 3600)
+                .ymd(2010, 12, 21)
+                .and_hms(1, 5, 11),
+        }),
+        voltage: Reading::Measurement(Measurement {
+            value: 236.7,
+            unit: "V".to_string(),
+        }),
+        current: Reading::Measurement(Measurement {
+            value: 1.0,
+            unit: "A".to_string(),
+        }),
+    };
+
+    assert_eq!(deserialised, expected_data);
 }
 
 fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind> {
