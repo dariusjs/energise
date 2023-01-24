@@ -280,13 +280,6 @@ fn create_point(
     Point::new(name)
         .add_tag("energy_type", Value::String(energy_type.to_string()))
         .add_tag("reading", Value::String(reading.to_string()))
-        // // influx_db_client expects an i64 but we have a Datetime so this is broken for now
-        // .add_timestamp(
-        //     match timestamp {
-        //         Reading::Timestamp(timestamp) => timestamp.timestamp,
-        //         _ => "asdad",
-        //     }
-        // )
         .add_field(
             "value",
             Value::Float(match value {
