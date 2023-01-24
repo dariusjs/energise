@@ -178,8 +178,11 @@ pub fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<Usage
 }
 
 fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind> {
-    let cest: FixedOffset = FixedOffset::east(2 * 3600);
-    let cet: FixedOffset = FixedOffset::east(3600);
+    let cest: FixedOffset = {
+        let secs = 2 * 3600;
+        FixedOffset::east_opt(secs).expect("FixedOffset::east out of bounds")
+    };
+    let cet: FixedOffset = FixedOffset::east_opt(3600).expect("FixedOffset::east out of bounds");
     if let Ok(naive_date) = NaiveDateTime::parse_from_str(&date[0..date.len() - 1], fmt) {
         let offset = match date.chars().last() {
             Some('W') => cet,
