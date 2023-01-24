@@ -1,4 +1,7 @@
-use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
+use chrono::DateTime;
+use chrono::FixedOffset;
+use chrono::NaiveDateTime;
+use chrono::TimeZone;
 use influx_db_client::{points, Point, Points, Precision, Value};
 use serde::{Deserialize, Serialize};
 use serialport::SerialPortSettings;
@@ -19,46 +22,46 @@ pub struct DsmrClient {
     pub influx_db: influx_db_client::Client,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct UsageData {
     #[serde(rename(deserialize = "0-0:1.0.0"))]
-    electricity_timestamp: Reading,
+    pub electricity_timestamp: Reading,
     #[serde(rename(deserialize = "1-0:1.7.0"))]
-    power_receiving: Reading,
+    pub power_receiving: Reading,
     #[serde(rename(deserialize = "1-0:2.7.0"))]
-    power_returning: Reading,
+    pub power_returning: Reading,
     #[serde(rename(deserialize = "1-0:2.8.1"))]
-    electricity_returned_reading_low_tariff: Reading,
+    pub electricity_returned_reading_low_tariff: Reading,
     #[serde(rename(deserialize = "1-0:2.8.2"))]
-    electricity_returned_reading_normal_tariff: Reading,
+    pub electricity_returned_reading_normal_tariff: Reading,
     #[serde(rename(deserialize = "1-0:1.8.1"))]
-    electricity_reading_low_tariff: Reading,
+    pub electricity_reading_low_tariff: Reading,
     #[serde(rename(deserialize = "1-0:1.8.2"))]
-    electricity_reading_normal_tariff: Reading,
+    pub electricity_reading_normal_tariff: Reading,
     #[serde(rename(deserialize = "0-1:24.2.1"))]
-    gas_reading: Reading,
-    gas_timestamp: Reading,
+    pub gas_reading: Reading,
+    pub gas_timestamp: Reading,
     #[serde(rename(deserialize = "1-0:32.7.0"))]
-    voltage: Reading,
+    pub voltage: Reading,
     #[serde(rename(deserialize = "1-0:31.7.0"))]
-    current: Reading,
+    pub current: Reading,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-enum Reading {
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub enum Reading {
     Measurement(Measurement),
     Timestamp(Timestamp),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct Measurement {
-    value: f64,
-    unit: String,
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub struct Measurement {
+    pub value: f64,
+    pub unit: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct Timestamp {
-    timestamp: chrono::DateTime<FixedOffset>,
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub struct Timestamp {
+    pub timestamp: chrono::DateTime<FixedOffset>,
 }
 
 impl DsmrClient {
@@ -116,7 +119,7 @@ fn get_meter_data(
     }
 }
 
-fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<UsageData, ErrorKind> {
+pub fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<UsageData, ErrorKind> {
     let mut hash: HashMap<String, Reading> = HashMap::new();
     for item in message.iter() {
         let a = item.replace(")", "");
@@ -125,23 +128,28 @@ fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<UsageData
             // Timestamps have a different format than the rest of P1 the records so we need to catch it and parse it first
             if x[0].to_string() == "0-0:1.0.0" {
                 let timestamp = parse_date(x[1], "%y%m%d%H%M%S");
-                println!("timestamp {:?}", timestamp);
-                hash.insert(
-                    x[0].to_string(),
-                    Reading::Timestamp(Timestamp {
-                        timestamp: timestamp.unwrap(),
-                    }),
-                );
+                match timestamp {
+                    Ok(t) => {
+                        hash.insert(
+                            x[0].to_string(),
+                            Reading::Timestamp(Timestamp { timestamp: t }),
+                        );
+                    }
+                    Err(e) => println!("{}", e),
+                }
             }
             // Gas is an exception because it posts two values of timestamp and reading instead of just a reading
             if x[0].to_string() == "0-1:24.2.1" {
                 let timestamp = parse_date(x[1], "%y%m%d%H%M%S");
-                hash.insert(
-                    "gas_timestamp".to_string(),
-                    Reading::Timestamp(Timestamp {
-                        timestamp: timestamp.unwrap(),
-                    }),
-                );
+                match timestamp {
+                    Ok(t) => {
+                        hash.insert(
+                            "gas_timestamp".to_string(),
+                            Reading::Timestamp(Timestamp { timestamp: t }),
+                        );
+                    }
+                    Err(e) => println!("{}", e),
+                }
                 let gas_volume: Vec<&str> = x[2].split('*').collect();
                 hash.insert(
                     x[0].to_string(),
@@ -170,8 +178,11 @@ fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<UsageData
 }
 
 fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind> {
-    let cest: FixedOffset = FixedOffset::east(2 * 3600);
-    let cet: FixedOffset = FixedOffset::east(3600);
+    let cest: FixedOffset = {
+        let secs = 2 * 3600;
+        FixedOffset::east_opt(secs).expect("FixedOffset::east out of bounds")
+    };
+    let cet: FixedOffset = FixedOffset::east_opt(3600).expect("FixedOffset::east out of bounds");
     if let Ok(naive_date) = NaiveDateTime::parse_from_str(&date[0..date.len() - 1], fmt) {
         let offset = match date.chars().last() {
             Some('W') => cet,
@@ -277,13 +288,6 @@ fn create_point(
     Point::new(name)
         .add_tag("energy_type", Value::String(energy_type.to_string()))
         .add_tag("reading", Value::String(reading.to_string()))
-        // // influx_db_client expects an i64 but we have a Datetime so this is broken for now
-        // .add_timestamp(
-        //     match timestamp {
-        //         Reading::Timestamp(timestamp) => timestamp.timestamp,
-        //         _ => "asdad",
-        //     }
-        // )
         .add_field(
             "value",
             Value::Float(match value {
