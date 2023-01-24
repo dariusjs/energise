@@ -26,6 +26,8 @@ jobs:
           key: test-cargo-registry
       - name: List
         run: find ./
+      - name: install dependencies
+        run: sudo apt-get install libudev-dev
       - name: Run tests
         run: cargo test --verbose
 
