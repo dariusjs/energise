@@ -25,43 +25,43 @@ pub struct DsmrClient {
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct UsageData {
     #[serde(rename(deserialize = "0-0:1.0.0"))]
-    electricity_timestamp: Reading,
+    pub electricity_timestamp: Reading,
     #[serde(rename(deserialize = "1-0:1.7.0"))]
-    power_receiving: Reading,
+    pub power_receiving: Reading,
     #[serde(rename(deserialize = "1-0:2.7.0"))]
-    power_returning: Reading,
+    pub power_returning: Reading,
     #[serde(rename(deserialize = "1-0:2.8.1"))]
-    electricity_returned_reading_low_tariff: Reading,
+    pub electricity_returned_reading_low_tariff: Reading,
     #[serde(rename(deserialize = "1-0:2.8.2"))]
-    electricity_returned_reading_normal_tariff: Reading,
+    pub electricity_returned_reading_normal_tariff: Reading,
     #[serde(rename(deserialize = "1-0:1.8.1"))]
-    electricity_reading_low_tariff: Reading,
+    pub electricity_reading_low_tariff: Reading,
     #[serde(rename(deserialize = "1-0:1.8.2"))]
-    electricity_reading_normal_tariff: Reading,
+    pub electricity_reading_normal_tariff: Reading,
     #[serde(rename(deserialize = "0-1:24.2.1"))]
-    gas_reading: Reading,
-    gas_timestamp: Reading,
+    pub gas_reading: Reading,
+    pub gas_timestamp: Reading,
     #[serde(rename(deserialize = "1-0:32.7.0"))]
-    voltage: Reading,
+    pub voltage: Reading,
     #[serde(rename(deserialize = "1-0:31.7.0"))]
-    current: Reading,
+    pub current: Reading,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-enum Reading {
+pub enum Reading {
     Measurement(Measurement),
     Timestamp(Timestamp),
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Measurement {
-    value: f64,
-    unit: String,
+pub struct Measurement {
+    pub value: f64,
+    pub unit: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-struct Timestamp {
-    timestamp: chrono::DateTime<FixedOffset>,
+pub struct Timestamp {
+    pub timestamp: chrono::DateTime<FixedOffset>,
 }
 
 impl DsmrClient {
@@ -128,23 +128,28 @@ pub fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<Usage
             // Timestamps have a different format than the rest of P1 the records so we need to catch it and parse it first
             if x[0].to_string() == "0-0:1.0.0" {
                 let timestamp = parse_date(x[1], "%y%m%d%H%M%S");
-                // println!("timestamp {:?}", timestamp);
-                hash.insert(
-                    x[0].to_string(),
-                    Reading::Timestamp(Timestamp {
-                        timestamp: timestamp.unwrap(),
-                    }),
-                );
+                match timestamp {
+                    Ok(t) => {
+                        hash.insert(
+                            x[0].to_string(),
+                            Reading::Timestamp(Timestamp { timestamp: t }),
+                        );
+                    }
+                    Err(e) => println!("{}", e),
+                }
             }
             // Gas is an exception because it posts two values of timestamp and reading instead of just a reading
             if x[0].to_string() == "0-1:24.2.1" {
                 let timestamp = parse_date(x[1], "%y%m%d%H%M%S");
-                hash.insert(
-                    "gas_timestamp".to_string(),
-                    Reading::Timestamp(Timestamp {
-                        timestamp: timestamp.unwrap(),
-                    }),
-                );
+                match timestamp {
+                    Ok(t) => {
+                        hash.insert(
+                            "gas_timestamp".to_string(),
+                            Reading::Timestamp(Timestamp { timestamp: t }),
+                        );
+                    }
+                    Err(e) => println!("{}", e),
+                }
                 let gas_volume: Vec<&str> = x[2].split('*').collect();
                 hash.insert(
                     x[0].to_string(),

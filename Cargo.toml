@@ -4,14 +4,17 @@ version = "0.3.0"
 authors = ["dariusjs"]
 edition = "2018"
 
+[lib]
+name = "dsmrlib"
+path = "src/dsmrlib/dsmrlib.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 chrono = { version = "^0.4", features= ["serde"] }
 serialport = "^3.3.0"
 serde = { version = "^1.0", features = ["derive"] }
-serde_json = "*"
-rusb = "^0.9"
+serde_json = "^1.0.60"
 tokio = { version = "^1.0", features = ["full", "tracing"] }
 reqwest = "^0.11"
 influx_db_client = "^0.5"
