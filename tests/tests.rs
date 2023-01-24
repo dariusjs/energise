@@ -1,13 +1,7 @@
-use chrono::{FixedOffset, TimeZone};
-
-// use crate::dsmrlib::{deserialise_p1_message, Measurement, Reading, Timestamp, UsageData};
-
 #[cfg(test)]
 
 mod test {
-    use chrono::DateTime;
     use chrono::FixedOffset;
-    use chrono::NaiveDateTime;
     use chrono::TimeZone;
     use dsmrlib::{deserialise_p1_message, Measurement, Reading, Timestamp, UsageData};
 
