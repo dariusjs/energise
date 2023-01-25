@@ -48,9 +48,10 @@ mod test {
 
         let expected_data = UsageData {
             electricity_timestamp: Reading::Timestamp(Timestamp {
-                timestamp: FixedOffset::east(1 * 3600)
-                    .ymd(2020, 12, 21)
-                    .and_hms(1, 8, 33),
+                timestamp: FixedOffset::east_opt(1 * 3600)
+                    .unwrap()
+                    .with_ymd_and_hms(2020, 12, 21, 1, 8, 33)
+                    .unwrap(),
             }),
             power_receiving: Reading::Measurement(Measurement {
                 value: 0.229,
@@ -81,9 +82,10 @@ mod test {
                 unit: "m3".to_string(),
             }),
             gas_timestamp: Reading::Timestamp(Timestamp {
-                timestamp: FixedOffset::east(1 * 3600)
-                    .ymd(2010, 12, 21)
-                    .and_hms(1, 5, 11),
+                timestamp: FixedOffset::east_opt(1 * 3600)
+                    .unwrap()
+                    .with_ymd_and_hms(2010, 12, 21, 1, 5, 11)
+                    .unwrap(),
             }),
             voltage: Reading::Measurement(Measurement {
                 value: 236.7,

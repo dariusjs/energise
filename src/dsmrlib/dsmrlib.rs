@@ -70,32 +70,38 @@ impl DsmrClient {
         let mut settings: SerialPortSettings = Default::default();
         settings.timeout = Duration::from_millis(TIMEOUT);
         settings.baud_rate = BAUD_RATE;
-        let port = serialport::open_with_settings(&self.serial_device, &settings).unwrap();
-        println!(
-            "Receiving data on {} at {} baud:",
-            &self.serial_device, &settings.baud_rate
-        );
-        //
-        //  raspberrypi energise[6162]: thread '<unnamed>' panicked at 'called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" }', src/dsmrlib/dsmrlib.rs:75:64
-        //
-        let data_iter = BufReader::new(port).lines().map(|lines| lines.unwrap());
-        let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
-        loop {
-            let data = receiver.recv();
-            match data {
-                Ok(data) => {
-                    self.influx_db
-                        .write_points(
-                            usage_to_points(&data).unwrap(),
-                            Some(Precision::Seconds),
-                            None,
-                        )
-                        .await
-                        .unwrap();
+        let port = serialport::open_with_settings(&self.serial_device, &settings);
+
+        match port {
+            Ok(p) => {
+                println!(
+                    "Receiving data on {} at {} baud:",
+                    &self.serial_device, &settings.baud_rate
+                );
+                //
+                //  raspberrypi energise[6162]: thread '<unnamed>' panicked at 'called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" }', src/dsmrlib/dsmrlib.rs:75:64
+                //
+                let data_iter = BufReader::new(p).lines().map(|lines| lines.unwrap());
+                let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
+                loop {
+                    let data = receiver.recv();
+                    match data {
+                        Ok(data) => {
+                            self.influx_db
+                                .write_points(
+                                    usage_to_points(&data).unwrap(),
+                                    Some(Precision::Seconds),
+                                    None,
+                                )
+                                .await
+                                .unwrap();
+                        }
+                        Err(_) => continue,
+                    }
+                    data_thread.thread().unpark();
                 }
-                Err(_) => continue,
             }
-            data_thread.thread().unpark();
+            Err(e) => println!("{}", e),
         }
     }
 }
@@ -119,7 +125,9 @@ fn get_meter_data(
     }
 }
 
-pub fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<UsageData, ErrorKind> {
+pub fn deserialise_p1_message(
+    message: Vec<std::string::String>,
+) -> Result<UsageData, serde_json::Error> {
     let mut hash: HashMap<String, Reading> = HashMap::new();
     for item in message.iter() {
         let a = item.replace(")", "");
@@ -151,29 +159,43 @@ pub fn deserialise_p1_message(message: Vec<std::string::String>) -> Result<Usage
                     Err(e) => println!("{}", e),
                 }
                 let gas_volume: Vec<&str> = x[2].split('*').collect();
-                hash.insert(
-                    x[0].to_string(),
-                    Reading::Measurement(Measurement {
-                        value: gas_volume[0].parse::<f64>().unwrap(),
-                        unit: gas_volume[1].to_string(),
-                    }),
-                );
+                let gas_vol_reading = gas_volume[0].parse::<f64>();
+                match gas_vol_reading {
+                    Ok(g) => {
+                        hash.insert(
+                            x[0].to_string(),
+                            Reading::Measurement(Measurement {
+                                value: g,
+                                unit: gas_volume[1].to_string(),
+                            }),
+                        );
+                    }
+                    Err(e) => println!("{}", e),
+                }
             } else {
                 if x[1].to_string().contains("*") {
                     let z: Vec<&str> = x[1].split('*').collect();
-                    hash.insert(
-                        x[0].to_string(),
-                        Reading::Measurement(Measurement {
-                            value: z[0].parse::<f64>().unwrap(),
-                            unit: z[1].to_string(),
-                        }),
-                    );
+                    let reading = z[0].parse::<f64>();
+                    match reading {
+                        Ok(r) => {
+                            hash.insert(
+                                x[0].to_string(),
+                                Reading::Measurement(Measurement {
+                                    value: r,
+                                    unit: z[1].to_string(),
+                                }),
+                            );
+                        }
+                        Err(e) => println!("{}", e),
+                    }
                 }
             }
         }
     }
-    let v = serde_json::to_value(&hash).unwrap();
-    let deserialised: UsageData = serde_json::from_value(v).unwrap();
+    let deserialised: UsageData = serde_json::from_value(match serde_json::to_value(&hash) {
+        Ok(it) => it,
+        Err(err) => return Err(err),
+    })?;
     Ok(deserialised)
 }
 
