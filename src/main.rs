@@ -1,8 +1,10 @@
 mod dsmrlib;
 mod influx_wrapper;
+use log::{error, info};
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     let influxdb_client = influx_wrapper::InfluxDbClient {
         ..Default::default()
     };
@@ -11,7 +13,7 @@ async fn main() {
 
     match influx_db {
         Ok(client) => {
-            println!("influx_db: {:?}", client);
+            info!("influx_db: {:?}", client);
             dsmrlib::DsmrClient {
                 serial_device: serial_device,
                 influx_db: client,
@@ -19,6 +21,6 @@ async fn main() {
             .send_to_influxdb()
             .await
         }
-        Err(e) => println!("{}", e),
+        Err(e) => error!("{}", e),
     }
 }

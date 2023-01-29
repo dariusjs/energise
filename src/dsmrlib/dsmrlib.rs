@@ -3,6 +3,9 @@ use chrono::FixedOffset;
 use chrono::NaiveDateTime;
 use chrono::TimeZone;
 use influx_db_client::{points, Point, Points, Precision, Value};
+
+pub use env_logger::init;
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serialport::SerialPortSettings;
 use std::collections::HashMap;
@@ -12,6 +15,7 @@ use std::io::ErrorKind;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 use std::time::Duration;
+extern crate env_logger;
 
 const BAUD_RATE: u32 = 115_200;
 const TIMEOUT: u64 = 1000;
@@ -74,34 +78,35 @@ impl DsmrClient {
 
         match port {
             Ok(p) => {
-                println!(
+                info!(
                     "Receiving data on {} at {} baud:",
                     &self.serial_device, &settings.baud_rate
                 );
-                //
-                //  raspberrypi energise[6162]: thread '<unnamed>' panicked at 'called `Result::unwrap()` on an `Err` value: Custom { kind: InvalidData, error: "stream did not contain valid UTF-8" }', src/dsmrlib/dsmrlib.rs:75:64
-                //
-                let data_iter = BufReader::new(p).lines().map(|lines| lines.unwrap());
+
+                let data_iter = BufReader::new(p).lines().map(|lines| {
+                    debug!("lines mapping: {:?}", lines);
+                    lines.unwrap()
+                });
                 let data_thread = thread::spawn(|| get_meter_data(Box::new(data_iter), sender));
                 loop {
                     let data = receiver.recv();
                     match data {
-                        Ok(data) => {
+                        Ok(d) => {
                             self.influx_db
                                 .write_points(
-                                    usage_to_points(&data).unwrap(),
+                                    usage_to_points(&d).unwrap(),
                                     Some(Precision::Seconds),
                                     None,
                                 )
                                 .await
-                                .unwrap();
+                                .ok();
                         }
-                        Err(_) => continue,
+                        Err(e) => error!("Failed to write to InfluxDB: {}", e),
                     }
                     data_thread.thread().unpark();
                 }
             }
-            Err(e) => println!("{}", e),
+            Err(e) => error!("Unable to connect to Serial Port: {}, retrying", e),
         }
     }
 }
@@ -118,9 +123,13 @@ fn get_meter_data(
             .take_while(|l| !l.starts_with('!'))
             .collect();
         let result = deserialise_p1_message(message);
-        sender
-            .send(result.unwrap())
-            .map_err(|_| ErrorKind::BrokenPipe)?;
+        match result {
+            Ok(r) => sender.send(r).map_err(|_| ErrorKind::BrokenPipe)?,
+            Err(e) => {
+                error!("Failure to deserialise p1 message: {}", e);
+                continue;
+            }
+        }
         thread::park();
     }
 }
