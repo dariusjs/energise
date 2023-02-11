@@ -113,7 +113,7 @@ fn get_meter_data(
     mut lines_iter: Box<dyn Iterator<Item = String>>,
     sender: Sender<UsageData>,
 ) -> Result<(), ErrorKind> {
-    println!("Reading meter data");
+    info!("Reading meter data");
     loop {
         let message: Vec<std::string::String> = lines_iter
             .by_ref()
@@ -150,7 +150,7 @@ fn deserialise_p1_message(
                             Reading::Timestamp(Timestamp { timestamp: t }),
                         );
                     }
-                    Err(e) => println!("{}", e),
+                    Err(e) => error!("Failed to parse: {}", e),
                 }
             }
             // Gas is an exception because it posts two values of timestamp and reading instead of just a reading
@@ -163,7 +163,7 @@ fn deserialise_p1_message(
                             Reading::Timestamp(Timestamp { timestamp: t }),
                         );
                     }
-                    Err(e) => println!("{}", e),
+                    Err(e) => error!("{}", e),
                 }
                 let gas_volume: Vec<&str> = x[2].split('*').collect();
                 let gas_vol_reading = gas_volume[0].parse::<f64>();
@@ -177,7 +177,7 @@ fn deserialise_p1_message(
                             }),
                         );
                     }
-                    Err(e) => println!("{}", e),
+                    Err(e) => error!("{}", e),
                 }
             } else {
                 if x[1].to_string().contains("*") {
@@ -193,7 +193,7 @@ fn deserialise_p1_message(
                                 }),
                             );
                         }
-                        Err(e) => println!("{}", e),
+                        Err(e) => error!("{}", e),
                     }
                 }
             }
@@ -224,7 +224,7 @@ fn parse_date(date: &str, fmt: &str) -> Result<DateTime<FixedOffset>, ErrorKind>
             _ => Err(ErrorKind::InvalidInput),
         }
     } else {
-        println!("Error in date parsing");
+        error!("Error in date parsing: {}", date);
         Err(ErrorKind::InvalidData)
     }
 }
@@ -461,7 +461,7 @@ mod tests {
         };
         match result {
             Ok(status) => assert_eq!(status, expected_data),
-            Err(e) => println!("{}", e),
+            Err(e) => error!("{}", e),
         };
     }
 }

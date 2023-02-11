@@ -1,8 +1,9 @@
+use influx_db_client::Client;
+use log::info;
 use reqwest::Url;
 use std::env;
-use std::string::String;
-use influx_db_client::{Client};
 use std::error::Error;
+use std::string::String;
 
 pub struct InfluxDbClient {
     pub address: String,
@@ -13,23 +14,25 @@ pub struct InfluxDbClient {
 impl InfluxDbClient {
     pub async fn setup_database(&self) -> Result<Client, Box<dyn Error>> {
         let url = Url::parse(&format!("{}:{}", self.address, self.port))?;
-        println!("influx: {}", url);
+        info!("influx: {}", url);
         let mut client = Client::new(url, &self.database_name);
         client.switch_database(&self.database_name);
         let db_exists = client.ping().await;
         if !db_exists {
-            return Err(Box::new(influx_db_client::Error::Communication(String::from("Cannot connect to Influx DB"))))
+            return Err(Box::new(influx_db_client::Error::Communication(
+                String::from("Cannot connect to Influx DB"),
+            )));
         }
         match client.create_database(&self.database_name).await {
             Ok(_) => Ok(client),
-            Err(e) => Err(Box::new(e))
+            Err(e) => Err(Box::new(e)),
         }
     }
 }
 
 impl Default for InfluxDbClient {
     fn default() -> Self {
-        InfluxDbClient{
+        InfluxDbClient {
             address: get_env_var("INFLUX_DB_ADDRESS"),
             port: get_env_var("INFLUX_DB_PORT"),
             database_name: get_env_var("INFLUX_DB_NAME"),
