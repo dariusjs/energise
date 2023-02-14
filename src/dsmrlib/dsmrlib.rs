@@ -99,12 +99,14 @@ impl DsmrClient {
                                 .await
                                 .ok();
                         }
-                        Err(e) => error!("Failed to write to InfluxDB: {}", e),
+                        Err(e) => {
+                            panic!("Failed to write to InfluxDB: {}", e);
+                        }
                     }
                     data_thread.thread().unpark();
                 }
             }
-            Err(e) => error!("Unable to connect to Serial Port: {}, retrying", e),
+            Err(e) => panic!("Unable to connect to Serial Port: {}, retrying", e),
         }
     }
 }
