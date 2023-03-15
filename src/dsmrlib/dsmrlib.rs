@@ -99,8 +99,8 @@ impl DsmrClient {
                                 .await
                                 .ok();
                         }
-                        Err(e) => {
-                            panic!("Failed to write to InfluxDB: {}", e);
+                        Err(_) => {
+                            return;
                         }
                     }
                     data_thread.thread().unpark();
